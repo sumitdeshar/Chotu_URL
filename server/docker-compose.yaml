@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:18
+    container_name: short_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: short_user
+      POSTGRES_PASSWORD: short123
+      POSTGRES_DB: short_url_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - short_url_pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U short_user -d short_url_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  short_url_pg_data:
