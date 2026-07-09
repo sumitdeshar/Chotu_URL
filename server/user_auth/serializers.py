@@ -1,26 +1,39 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from .models import User
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-User = get_user_model()
 
-#
-class RegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(required=False, max_length=150)
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, validators=[validate_password])
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['username'] = user.username
+        token['email'] = user.email
+        return token
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=6)
     password2 = serializers.CharField(write_only=True)
+    username = serializers.CharField(required=False)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'password', 'password2']
+        read_only_fields = ['id']
+        
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
 
     def validate(self, attrs):
-        # Clean structural checking
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password2": "Passwords do not match."})
-            
-        if User.objects.filter(email=attrs['email'].lower().strip()).exists():
-            raise serializers.ValidationError({"email": "A user with this email already exists."})
-            
         return attrs
-
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=100)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.contrib.auth import authenticate
 from .models import User
 
 class UserService:
@@ -32,3 +33,17 @@ class UserService:
         # transaction.on_commit(lambda: send_welcome_email.delay(user.id))
 
         return user
+    
+    @staticmethod
+    def login_user(email: str, password: str) -> User:
+        try:
+            user_obj = User.objects.get(email=email.lower().strip())
+        except User.DoesNotExist:
+            raise ValidationError("Invalid email or password.")
+
+        user = authenticate(username=user_obj.username, password=password)
+
+        if user is None:
+            raise ValidationError("Invalid email or password.")
+
+        return user # type: ignore
